@@ -30,6 +30,10 @@ sub new {
 			die "Bearer token required",
 	};
 	bless $me, $class;
+	if (!defined $args{model}) {
+		$args{model} = "grok-beta";
+	}
+	$me->{model} = $args{model};
 	$me->{ua} = LWP::UserAgent->new;
 	$me->{ua}->agent('curl/8.10.1');
 	#$me->{ua}->agent('unix2mars special code/0.0');
@@ -69,6 +73,12 @@ sub _mkr {
 # Example method for a query to Grok or similar AI
 sub query_grok {
 	my ($me, $query) = @_;
+	my $temp = $me->{temperature};
+	my $model = $me->{model};
+	if (!defined $temp) {
+		$temp = 0;
+	}
+	$temp += 0; # convert to numeric
 	return $me->_mkr('POST', 'chat/completions', {
 		"messages" => [
 	  {
@@ -81,9 +91,9 @@ sub query_grok {
 		"content" => $query
 	  }
 	],
-	"model" => "grok-beta",
+	"model" => $model,
 	"stream" => JSON::false,
-	"temperature" => 0
+	"temperature" => $temp
 	});
 }
 
@@ -117,6 +127,23 @@ sub models {
 		$idstr = "/${id}";
 	}
 	return $me->_mkr('GET', 'models'.$idstr);
+}
+
+sub temperature {
+	my ($me, $temp) = @_;
+
+	if (defined $temp) {
+		$me->{temperature} = $temp;
+	}
+	return $me->{temperature};
+}
+
+sub model {
+	my ($me, $model) = @_;
+	if (defined $model) {
+		$me->{model} = $model;
+	}
+	return $me->{model};
 }
 
 1;
