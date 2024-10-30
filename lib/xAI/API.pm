@@ -33,7 +33,11 @@ sub new {
 	if (!defined $args{model}) {
 		$args{model} = "grok-beta";
 	}
-	$me->{model} = $args{model};
+	if (!defined $args{temperature}) {
+		$args{temperature} = 0;
+	}
+	$me->temperature($args{temperature});
+	$me->model($args{model});
 	$me->{ua} = LWP::UserAgent->new;
 	$me->{ua}->agent('curl/8.10.1');
 	#$me->{ua}->agent('unix2mars special code/0.0');
@@ -73,8 +77,8 @@ sub _mkr {
 # Example method for a query to Grok or similar AI
 sub query_grok {
 	my ($me, $query) = @_;
-	my $temp = $me->{temperature};
-	my $model = $me->{model};
+	my $temp = $me->temperature;
+	my $model = $me->model;
 	if (!defined $temp) {
 		$temp = 0;
 	}
