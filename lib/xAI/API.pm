@@ -19,6 +19,7 @@ use strict;
 use warnings;
 use LWP::UserAgent;
 use JSON;
+use Data::Dumper;
 
 our $VERSION = '0.01';
 
@@ -47,6 +48,10 @@ sub new {
 	$me->{ua}->agent('curl-perl/8.10.1');
 	#$me->{ua}->agent('curl-perl/6.77');
 	#$me->{ua}->agent('libwww-perl/8.10.1');
+	$me->{debug} = $args{debug};
+	if (!defined $me->{debug}) {
+		$me->{debug} = 0;
+	}
 	return $me;
 }
 
@@ -62,14 +67,15 @@ sub _mkr {
 	if (defined $params) {
 		my $content = JSON::encode_json($params);
 		$req->content($content);
-		printf "content = '%s'\n", $content;
+		if ($me->{debug}>0) {
+			printf "content = '%s'\n", $content;
+		}
 	}
 
 	my $res = $ua->request($req);
 	if ($res->is_success) {
 		return JSON::decode_json($res->decoded_content);
 	}
-	use Data::Dumper;
 	print Dumper($res);
 	die $res->status_line;
 }
