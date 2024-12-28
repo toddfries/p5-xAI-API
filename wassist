@@ -1,0 +1,109 @@
+#!/usr/bin/env perl
+
+# Copyright (c) 2024 Todd T. Fries <todd@fries.net>
+#
+# Permission to use, copy, modify, and distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+use strict;
+use warnings;
+
+use Data::Dumper;
+use Getopt::Std;
+use Time::HiRes qw(gettimeofday tv_interval);
+use xAI::API;
+use ReadConf;
+
+
+our $opt_t; # temperature
+our $opt_m; # model
+our $opt_W; # disable wordwrap
+our $opt_c; # config file
+
+# defaults
+$opt_c = $ENV{HOME}."/.config/cxai/grok.conf";
+$opt_m = "grok-beta"; # only one at the beginning
+
+getopts('c:m:t:W');
+
+my $rc = ReadConf->new();
+my $conf = $rc->readconf($opt_c);
+my $section = "creds";
+my $c = $conf->{$section};
+if (!defined($c)) {
+        die "[creds] not found in ".$opt_c;
+}
+my $token = $c->{bearer};
+if (!defined($token)) {
+	die "Token not in config file!";
+}
+
+# Assuming you've set your token in an environment variable for security
+my $api = xAI::API->new(bearer_token => $token);
+
+$api->model($opt_m);
+
+if (defined $opt_t) {
+	$api->temperature($opt_t);
+}
+
+my $res;
+
+my $query = "";
+if (!defined $opt_t) {
+	$opt_t = 0;
+}
+my $l;
+while(<STDIN>) {
+	chomp($l = $_);
+	$query .= $l."\n";
+}
+
+my $start = [gettimeofday];
+eval {
+	$res = $api->query_grok($query);
+};
+if ($@) {
+	die "Oof... $@";
+}
+my ($sec, $us) = tv_interval ($start, [gettimeofday]);
+if (!defined $us) {
+	$us = 0.0;
+}
+if (!defined $sec) {
+	$sec = 0.0;
+}
+my $elapsed = $sec * 1.0 + $us * 0.000001;
+printf "# runtime %0.8fs\n", $elapsed;
+
+# Print the response
+if (defined @{$res->{'choices'}}[0]) {
+	foreach my $choice (@{$res->{'choices'}}) {
+		printf "Choice#%2d:\n", $choice->{index};
+		my $oldresp = $choice->{message}->{content};
+		printf "%s\n\n", $oldresp;
+		if (!defined($choice->{'finish_reason'})) {
+			$choice->{finish_reason} = 'undef';
+		}
+		printf "     finish = %s\n", $choice->{'finish_reason'};
+	}
+	print "Stats: ";
+	print $res->{'created'};
+	printf " tot/prompt/compl tokens = %d/%d/%d\n",
+		$res->{'usage'}->{'total_tokens'},
+		$res->{'usage'}->{'prompt_tokens'},
+		$res->{'usage'}->{'completion_tokens'},
+	#print Dumper($res);
+} else {
+	print Dumper($res);
+}
+print "\n";
