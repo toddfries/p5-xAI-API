@@ -60,14 +60,16 @@ if ($opt_a eq "query") {
 	print "Grok says: ".${ $res->{choices} }[0]->{message}->{content}."\n";
 }
 if ($opt_a eq "search") {
-	$api->searchmode("on");
-	$api->citations("true");
-	$api->sources("x:x_handles=RapidResponse47,potus,whitehouse,presssec,lauraloomer,vigilantfox;web:excluded_websites=wikipedia.org,wokepedia.org:country=US;news:excluded_websites=abc.com,nbc.com,msnbc.com,cnn.com");
-	$res = $api->query_grok("What has President Trump done in the last week?");
+	$api->var("searchmode","on");
+	$api->var("citations","true");
+	$api->var("sources","x:x_handles=RapidResponse47,potus,whitehouse,presssec,lauraloomer,vigilantfox;web:excluded_websites=wikipedia.org,wokepedia.org:country=US;news:excluded_websites=abc.com,nbc.com,msnbc.com,cnn.com");
+	$api->var("system","You are a history professor answering questions with accurate, detailed, and engaging explanations.");
+	$res = $api->query_grok("What executive orders has President Trump signed in the last week?");
 	my $i=0;
 	for my $choice (@{ $res->{choices}}) {
 		$i++;
-		printf "%3d. '%s'\n", $i, $choice->{message}->{content};
+		printf "\n-------------\n%3d. '%s'\n",
+			$i, $choice->{message}->{content};
 		print Dumper($choice);
 	}
 }	
@@ -81,5 +83,7 @@ if (0) {
 if (0) {
 	$res = $api->language_models;
 }
-use Data::Dumper;
-print Dumper($res);
+#print Dumper($res);
+print "Usage:\n".Dumper($res->{usage});
+printf "Date: %s\n", $res->{created};
+printf "id: %s\n", $res->{id};
