@@ -25,8 +25,11 @@ our $opt_c = $ENV{HOME}."/.config/cxai/grok.conf";
 our $opt_s = "creds"; # section
 our $opt_m = "grok-3-mini"; # model
 our $opt_a = "search"; # action
+our $opt_S = "x:x_hanldles=unix2mars;web:excluded_websites=wikipedia.org"; # sources
+our $opt_Q = "What is the meaning of life?"; # query
+our $opt_Y = "You are a history professor answering questions with accurate, detailed, and engaging explanations."; # sYstem setup
 
-getopts("c:m:s:");
+getopts("a:c:m:s:Q:S:Y:");
 
 my $rc = ReadConf->new();
 my $conf = $rc->readconf($opt_c);
@@ -62,15 +65,17 @@ if ($opt_a eq "query") {
 if ($opt_a eq "search") {
 	$api->var("searchmode","on");
 	$api->var("citations","true");
-	$api->var("sources","x:x_handles=RapidResponse47,potus,whitehouse,presssec,lauraloomer,vigilantfox;web:excluded_websites=wikipedia.org,wokepedia.org:country=US;news:excluded_websites=abc.com,nbc.com,msnbc.com,cnn.com");
-	$api->var("system","You are a history professor answering questions with accurate, detailed, and engaging explanations.");
-	$res = $api->query_grok("What executive orders has President Trump signed in the last week?");
+	$api->var("sources",$opt_S);
+	$api->var("system", $opt_Y);
+	$res = $api->query_grok($opt_Q);
 	my $i=0;
 	for my $choice (@{ $res->{choices}}) {
 		$i++;
-		printf "\n-------------\n%3d. '%s'\n",
+		printf "\n------------- Result:\n%3d. '%s'\n",
 			$i, $choice->{message}->{content};
-		print Dumper($choice);
+		printf "------------- Reasoning:\n%s\n",
+			$choice->{message}->{'reasoning_content'};
+		#print Dumper($choice);
 	}
 }	
 
@@ -83,7 +88,7 @@ if (0) {
 if (0) {
 	$res = $api->language_models;
 }
-#print Dumper($res);
 print "Usage:\n".Dumper($res->{usage});
 printf "Date: %s\n", $res->{created};
 printf "id: %s\n", $res->{id};
+print Dumper($res);
