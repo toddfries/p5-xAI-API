@@ -32,13 +32,22 @@ sub new {
 	};
 	bless $me, $class;
 	if (!defined $args{model}) {
-		$args{model} = "grok-beta";
+		$args{model} = "grok-3-mini";
 	}
 	if (!defined $args{temperature}) {
 		$args{temperature} = 0;
 	}
+	if (!defined $args{searchmode}) {
+		$args{searchmode} = "off";
+	}
+	if (!defined $args{citations}) {
+		$args{citations} = "false";
+	}
 	$me->temperature($args{temperature});
 	$me->model($args{model});
+	$me->searchmode($args{searchmode});
+	$me->citations($args{citations});
+	#$me->sources($args{sources});
 	$me->{ua} = LWP::UserAgent->new;
 	$me->{ua}->agent('curl/8.10.1');
 	#$me->{ua}->agent('unix2mars special code/0.0');
@@ -89,7 +98,7 @@ sub query_grok {
 		$temp = 0;
 	}
 	$temp += 0; # convert to numeric
-	return $me->_mkr('POST', 'chat/completions', {
+	my $data = {
 		"messages" => [
 	  {
 		"role" => "system",
@@ -103,8 +112,46 @@ sub query_grok {
 	],
 	"model" => $model,
 	"stream" => JSON::false,
-	"temperature" => $temp
-	});
+	"temperature" => $temp,
+	"search_parameters" => {
+		"mode" => $me->searchmode()
+	},
+	};
+	if ($me->{citations} eq "true") {
+		$data->{search_parameters}->{return_citations} = JSON::true;
+	}
+	if (defined $me->{fromdate}) {
+		$data->{search_parameters}->{from_date} = $me->{fromdate};
+	}
+	if (defined $me->{todate}) {
+		$data->{search_parameters}->{to_date} = $me->{todate};
+	}
+	if (defined $me->{maxsearch}) {
+		$data->{search_parameters}->{max_search_results} =
+			$me->{maxsearch};
+	}
+	# $me->{sources} = "x;web:excluded_websites=wikipedia.org,wokepedia.org:country=jp
+	if (defined $me->{sources}) {
+		my @srclist = ();
+		for my $src (split(";",$me->{sources})) {
+			my @list = split(/:/,$src);
+			my $type = shift @list;
+			my $sdata = { "type" => $type };
+			for my $arg (@list) {
+				my ($var, $vals) = split(/=/, $arg);
+				if ($var eq "country") {
+					$sdata->{$var} = $vals;
+					next;
+				}
+				$sdata->{$var} = [ split(/,/,$vals) ];
+			}
+			push @srclist, $sdata;
+		}
+
+		$data->{search_parameters}->{sources} = [ @srclist ];
+	}
+
+	return $me->_mkr('POST', 'chat/completions', $data);
 }
 
 sub keyinfo {
@@ -146,6 +193,30 @@ sub temperature {
 		$me->{temperature} = $temp;
 	}
 	return $me->{temperature};
+}
+sub searchmode {
+	my ($me, $searchmode) = @_;
+
+	if (defined $searchmode) {
+		$me->{searchmode} = $searchmode
+	}
+	return $me->{searchmode};
+}
+sub citations {
+	my ($me, $citations) = @_;
+
+	if (defined $citations) {
+		$me->{citations} = $citations
+	}
+	return $me->{citations};
+}
+sub sources {
+	my ($me, $sources) = @_;
+
+	if (defined $sources) {
+		$me->{sources} = $sources
+	}
+	return $me->{sources};
 }
 
 sub model {
