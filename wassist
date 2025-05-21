@@ -28,16 +28,18 @@ our $opt_t; # temperature
 our $opt_m; # model
 our $opt_W; # disable wordwrap
 our $opt_c; # config file
+our $opt_s; # config section
 
 # defaults
 $opt_c = $ENV{HOME}."/.config/cxai/grok.conf";
-$opt_m = "grok-beta"; # only one at the beginning
+$opt_m = "grok-3"; # only one at the beginning
+$opt_s = "creds";
 
-getopts('c:m:t:W');
+getopts('c:m:s:t:W');
 
 my $rc = ReadConf->new();
 my $conf = $rc->readconf($opt_c);
-my $section = "creds";
+my $section = $opt_s;
 my $c = $conf->{$section};
 if (!defined($c)) {
         die "[creds] not found in ".$opt_c;
